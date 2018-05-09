@@ -75,7 +75,7 @@ public class ClosingPrice {
             closingPrice.prepareDataExtraLongPrice();
             Map<String,BigDecimal> map=closingPrice.process();
             assertTrue( "Failed to detect an extra long price format",false);
-            closingPrice.printOutput(map);
+            //closingPrice.printOutput(map);
         } catch (NumberFormatException e) {
             //expected result;
         } catch (Exception e) {
