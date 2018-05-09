@@ -3,11 +3,14 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ClosingPrice {
@@ -27,16 +30,22 @@ public class ClosingPrice {
         Files.write(Paths.get(fileName), source);
     }
 
+    public void prepareDataExtraLongPrice() throws IOException {
+        List<String> source = Arrays.asList("A0000000", "12.200000011111", "13.2", "IBM00000", "200.02","198.4","A0000000","12.5","A0000000","12.25","A0000000");
+        source.forEach(line -> line.concat(newLine));
+        Files.write(Paths.get(fileName), source);
+    }
+
     @Test
     public void testClosingPrice(){
         ClosingPrice closingPrice= new ClosingPrice();
         try {
             closingPrice.prepareData();
-            Map<String,Double> map=closingPrice.process();
+            Map<String,BigDecimal> map=closingPrice.process();
             assertTrue(map.containsKey("A0000000"));
             assertTrue(map.containsKey("IBM00000"));
-            assertTrue( map.get("IBM00000").equals(198.4));
-            assertTrue( map.get("A0000000").equals(12.25));
+            assertTrue( map.get("IBM00000").equals(new BigDecimal("198.4")));
+            assertTrue( map.get("A0000000").equals(new BigDecimal("12.25")));
             closingPrice.printOutput(map);
         } catch (Exception e) {
             System.out.println(e.getMessage());
@@ -48,32 +57,47 @@ public class ClosingPrice {
         ClosingPrice closingPrice= new ClosingPrice();
         try {
             closingPrice.prepareDataExtraTicker();
-            Map<String,Double> map=closingPrice.process();
+            Map<String,BigDecimal> map=closingPrice.process();
             assertTrue(map.containsKey("A0000000"));
             assertTrue( map.containsKey("IBM00000"));
-            assertTrue( map.get("IBM00000").equals(198.4));
-            assertTrue( map.get("A0000000").equals(12.25));
+            assertTrue( map.get("IBM00000").equals(new BigDecimal("198.4")));
+            assertTrue( map.get("A0000000").equals(new BigDecimal("12.25")));
             closingPrice.printOutput(map);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
     }
-    private void printOutput(Map<String, Double> map) {
+
+    @Test
+    public void testClosingPriceExtraLongPrice(){
+        ClosingPrice closingPrice= new ClosingPrice();
+        try {
+            closingPrice.prepareDataExtraLongPrice();
+            Map<String,BigDecimal> map=closingPrice.process();
+            assertTrue( "Failed to detect an extra long price format",false);
+            closingPrice.printOutput(map);
+        } catch (NumberFormatException e) {
+            //expected result;
+        } catch (Exception e) {
+            assertTrue("Failed to read input file", false);
+        }
+    }
+    private void printOutput(Map<String, BigDecimal> map) {
         map.forEach((k, v) -> System.out.println("CUSIP : " + k + " Closing price : " + v));
     }
 
-    private Map<String, Double> process() throws Exception {
-        Map<String, Double> sortedTickers = new HashMap<>();
+    private Map<String, BigDecimal> process() throws Exception {
+        Map<String, BigDecimal> sortedTickers = new HashMap<>();
         Scanner scanner=null;
         String currentTicker=null;
-        Double currentTickerPrice;
+        BigDecimal currentTickerPrice;
         try {
             scanner = new Scanner(new File(fileName));
             while ( scanner.hasNextLine() ) {
                 String line = scanner.nextLine();
                 if(line.length()==0) continue;
                 if(isPrice(line)){
-                    currentTickerPrice=new Double(line);
+                    currentTickerPrice=new BigDecimal(line);
                     if(currentTicker==null) {
                         throw new Exception("Price must follow a ticker");
                     }
@@ -84,6 +108,9 @@ public class ClosingPrice {
 
             }
             //return sortedTickers;
+        }catch (NumberFormatException e){
+            System.out.println("Invalid price format");
+            throw  e;
         } finally {
             if(scanner!=null) {
                 scanner.close();
